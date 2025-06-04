@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000
 // === 資料儲存區 ===
 const fibonacci = [1, 2, 3, 5, 8, 13, 21, 34, 55]
 
-// voteData: { topic: { votes: {num: count}, voters: {num: [username]} } }
+// voteData: { topic: { num: [username] }
 const voteData = {}
 
 // votedUsers: { topic: Map(username → option) }
@@ -57,11 +57,6 @@ fastify.get("/api/register", async (req, reply) => {
 	return { alias }
 })
 
-// === 首頁 ===
-fastify.get("/", async (req, reply) => {
-	return reply.view("index.hbs")
-})
-
 // === GET /api/topics - 取得所有主題 ===
 fastify.get("/api/topics", async (req, reply) => {
 	return Object.keys(voteData)
@@ -78,15 +73,11 @@ fastify.post("/api/create-topic", async (req, reply) => {
 		return { success: false, message: "主題已存在" }
 	}
 
-	voteData[topic] = {
-		votes: {},
-		voters: {},
-	}
+	voteData[topic] = {}
 	votedUsers[topic] = new Map()
 
 	fibonacci.forEach((n) => {
-		voteData[topic].votes[n] = 0
-		voteData[topic].voters[n] = []
+		voteData[topic][n] = []
 	})
 
 	return { success: true }
@@ -100,7 +91,7 @@ fastify.post("/api/vote", async (req, reply) => {
 		return reply.code(400).send("缺少欄位")
 	}
 
-	if (!voteData[topic] || !(option in voteData[topic].votes)) {
+	if (!voteData[topic] || !(option in voteData[topic])) {
 		return reply.code(400).send("主題或選項不存在")
 	}
 
@@ -112,15 +103,13 @@ fastify.post("/api/vote", async (req, reply) => {
 
 	// 如果有舊票 → 移除
 	if (prevOption != null) {
-		voteData[topic].votes[prevOption]--
-		voteData[topic].voters[prevOption] = voteData[topic].voters[
-			prevOption
-		].filter((name) => name !== alias)
+		voteData[topic][prevOption] = voteData[topic][prevOption].filter(
+			(name) => name !== alias
+		)
 	}
 
 	// 新票加入
-	voteData[topic].votes[option]++
-	voteData[topic].voters[option].push(alias)
+	voteData[topic][option].push(alias)
 	votedUsers[topic].set(alias, option)
 
 	return reply.send("投票成功（已更新）")
