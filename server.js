@@ -46,6 +46,10 @@ fastify.register(fastifyCors, {
 })
 fastify.register(fastifyFormbody)
 
+fastify.get("/", async (req, reply) => {
+	return "OK"
+})
+
 fastify.get("/api/register", async (req, reply) => {
 	let alias
 	for (const name of cuteNames) {
