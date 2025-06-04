@@ -41,9 +41,11 @@ const cuteNames = [
 	"抹茶",
 ]
 
-fastify.register(fastifyCors, {
+fastify.register(require("@fastify/cors"), {
 	origin: "https://fibonacci-easy-vote-rrbt.vercel.app",
+	credentials: true,
 })
+
 fastify.register(fastifyFormbody)
 
 fastify.get("/", async (req, reply) => {
