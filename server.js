@@ -42,7 +42,7 @@ const cuteNames = [
 ]
 
 fastify.register(fastifyCors, {
-	origin: "https://fibonacci-easy-vote-rrbt.vercel.app/",
+	origin: "https://fibonacci-easy-vote-rrbt.vercel.app",
 })
 fastify.register(fastifyFormbody)
 
