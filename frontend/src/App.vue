@@ -45,113 +45,108 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
-import Chart from 'chart.js/auto'
+import { ref, computed, onMounted, nextTick } from 'vue';
+import Chart from 'chart.js/auto';
+import axiosInstance from './axios';
 
-const fibonacci = [1, 2, 3, 5, 8, 13, 21, 34, 55]
+const fibonacci: number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 
-const alias = ref(localStorage.getItem('alias') || '')
-const newTopic = ref('')
-const topics = ref([])
-const selectedTopic = ref('')
-const currentTopic = ref('')
-const voteData = ref({ votes: {}, voters: {} })
-const chartRef = ref(null)
-let chartInstance = null
+const alias = ref<string>(localStorage.getItem('alias') || '');
+const newTopic = ref<string>('');
+const topics = ref<string[]>([]);
+const selectedTopic = ref<string>('');
+const currentTopic = ref<string>('');
+const voteData = ref<{ votes: Record<number, number>; voters: Record<number, string[]> }>({ votes: {}, voters: {} });
+const chartRef = ref<HTMLCanvasElement | null>(null);
+let chartInstance: Chart | null = null;
 
-const average = computed(() => {
-  const voters = voteData.value.voters || {}
-  let total = 0, count = 0
+const average = computed<string>(() => {
+  const voters = voteData.value.voters || {};
+  let total = 0, count = 0;
   for (const [key, list] of Object.entries(voters)) {
-    total += Number(key) * list.length
-    count += list.length
+    total += Number(key) * list.length;
+    count += list.length;
   }
-  return count ? (total / count).toFixed(2) : 'N/A'
-})
+  return count ? (total / count).toFixed(2) : 'N/A';
+});
 
-const nearestFib = computed(() => {
-  if (average.value === 'N/A') return 'N/A'
-  const avg = parseFloat(average.value)
+const nearestFib = computed<string>(() => {
+  if (average.value === 'N/A') return 'N/A';
+  const avg = parseFloat(average.value);
   return fibonacci.reduce((prev, curr) =>
     Math.abs(curr - avg) < Math.abs(prev - avg) ? curr : prev
-  )
-})
+  ).toString();
+});
 
 onMounted(async () => {
   if (!alias.value) {
-    const res = await fetch('/api/register')
-    const data = await res.json()
-    alias.value = data.alias
-    localStorage.setItem('alias', alias.value)
+    const res = await axiosInstance.get('/register');
+    const data: { alias: string } = res.data;
+    alias.value = data.alias;
+    localStorage.setItem('alias', alias.value);
   }
-  await loadTopics()
-})
+  await loadTopics();
+});
 
-async function loadTopics() {
-  const res = await fetch('/api/topics')
-  topics.value = await res.json()
+async function loadTopics(): Promise<void> {
+  const res = await axiosInstance.get('/topics');
+  topics.value = res.data;
 }
 
-async function createTopic() {
-  if (!newTopic.value.trim()) return
-  await fetch('/api/create-topic', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic: newTopic.value })
-  })
-  newTopic.value = ''
-  await loadTopics()
+async function createTopic(): Promise<void> {
+  if (!newTopic.value.trim()) return;
+  await axiosInstance.post('/create-topic', {
+    topic: newTopic.value
+  });
+  newTopic.value = '';
+  await loadTopics();
 }
 
-async function enterTopic() {
-  if (!selectedTopic.value) return
-  currentTopic.value = selectedTopic.value
-  await loadVotes()
+async function enterTopic(): Promise<void> {
+  if (!selectedTopic.value) return;
+  currentTopic.value = selectedTopic.value;
+  await loadVotes();
 }
 
-async function refresh() {
-  await loadTopics()
-  if (currentTopic.value) await loadVotes()
+async function refresh(): Promise<void> {
+  await loadTopics();
+  if (currentTopic.value) await loadVotes();
 }
 
-async function vote(num) {
-  await fetch('/api/vote', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      alias: alias.value,
-      topic: currentTopic.value,
-      option: num
-    })
-  })
-  await loadVotes()
+async function vote(num: number): Promise<void> {
+  await axiosInstance.post('/vote', {
+    alias: alias.value,
+    topic: currentTopic.value,
+    option: num
+  });
+  await loadVotes();
 }
 
-async function loadVotes() {
-  const res = await fetch('/api/votes')
-  const allVotes = await res.json()
-  voteData.value = allVotes[currentTopic.value] || { votes: {}, voters: {} }
-  await nextTick()
-  updateChart()
+async function loadVotes(): Promise<void> {
+  const res = await axiosInstance.get('/votes');
+  const allVotes: Record<string, { votes: Record<number, number>; voters: Record<number, string[]> }> = res.data;
+  voteData.value = allVotes[currentTopic.value] || { votes: {}, voters: {} };
+  await nextTick();
+  updateChart();
 }
 
-function updateChart() {
-  const ctx = chartRef.value?.getContext('2d')
-  if (!ctx) return
+function updateChart(): void {
+  const ctx = chartRef.value?.getContext('2d');
+  if (!ctx) return;
 
-  const labels = fibonacci.map(String)
-  const data = fibonacci.map(num => voteData.value.votes?.[num] || 0)
+  const labels = fibonacci.map(String);
+  const data = fibonacci.map(num => voteData.value.votes?.[num] || 0);
 
   const dataset = {
     label: `票數統計`,
     data,
     backgroundColor: '#60a5fa'
-  }
+  };
 
   if (chartInstance) {
-    chartInstance.data.labels = labels
-    chartInstance.data.datasets = [dataset]
-    chartInstance.update()
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets = [dataset];
+    chartInstance.update();
   } else {
     chartInstance = new Chart(ctx, {
       type: 'bar',
@@ -165,16 +160,16 @@ function updateChart() {
           y: { beginAtZero: true }
         }
       }
-    })
+    });
   }
 }
 
-function downloadImage() {
-  if (!chartRef.value) return
-  const link = document.createElement('a')
-  link.download = `${currentTopic.value}_chart.png`
-  link.href = chartRef.value.toDataURL('image/png')
-  link.click()
+function downloadImage(): void {
+  if (!chartRef.value) return;
+  const link = document.createElement('a');
+  link.download = `${currentTopic.value}_chart.png`;
+  link.href = chartRef.value.toDataURL('image/png');
+  link.click();
 }
 </script>
 
