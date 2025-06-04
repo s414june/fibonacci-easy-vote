@@ -1,5 +1,6 @@
 const path = require("path")
 const fastify = require("fastify")({ logger: true })
+const fastifyCors = require("@fastify/cors")
 
 const fastifyFormbody = require("@fastify/formbody")
 
@@ -40,6 +41,9 @@ const cuteNames = [
 	"抹茶",
 ]
 
+fastify.register(fastifyCors, {
+	origin: "https://fibonacci-easy-vote-rrbt.vercel.app/",
+})
 fastify.register(fastifyFormbody)
 
 fastify.get("/api/register", async (req, reply) => {
